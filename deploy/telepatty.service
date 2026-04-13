@@ -8,12 +8,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=paulo
-WorkingDirectory=/home/paulo/OwnCloud/developaulo/personal/work/interpt/tech/devs/telepatty
-Environment=TELEPATTY_TOKEN=CeIu7l71V_vAepiBShgKZv0sJQbWOWPbbzQ3OQKxXS0
+User=%u
+WorkingDirectory=/path/to/telepatty
+Environment=TELEPATTY_TOKEN=changeme
 Environment=TELEPATTY_HOST=127.0.0.1
 Environment=TELEPATTY_PORT=7857
-ExecStart=/home/paulo/.pyenv/versions/base/bin/uvicorn server.main:app --host 127.0.0.1 --port 7857
+ExecStart=/usr/local/bin/uvicorn server.main:app --host 127.0.0.1 --port 7857
 Restart=always
 RestartSec=5
 

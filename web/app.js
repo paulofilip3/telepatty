@@ -802,16 +802,14 @@
         };
 
         rec.onend = function () {
-            // Auto-stopped (silence detected or done)
+            // Auto-stopped (silence detected or done) — leave text for review
             isListening = false;
             speechRecognition = null;
             micBtn.classList.remove('recording');
             inputText.placeholder = 'type or speak...';
-            // Auto-submit the transcribed text and clear
             inputText.value = inputText.value.trimEnd();
-            if (inputText.value) {
-                sendInput();
-            }
+            autoResizeTextarea();
+            inputText.focus();
         };
 
         speechRecognition = rec;

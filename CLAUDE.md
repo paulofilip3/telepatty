@@ -1,81 +1,39 @@
-# Telepatty
+# Telepatty — Developer Notes
 
-Watch and interact with tmux sessions from an iPad via a web-based terminal viewer.
-
-## Architecture
-
-```
-iPad Safari <-> Cloudflare (tty.paulorosario.com) <-> Scaleway nginx <-> SSH tunnel <-> Local FastAPI+WS server <-> tmux
-```
+Web-based tmux remote controller. See README.md for overview and setup.
 
 ## Tech Stack
 
-- **Server**: Python, FastAPI, uvicorn, WebSocket
-- **Web UI**: Vanilla HTML/CSS/JS, Catppuccin Mocha/Latte themes, mobile-first
-- **Voice**: MediaRecorder API (browser) -> faster-whisper (server, optional)
-- **Infra**: autossh reverse tunnel, nginx on Scaleway, Cloudflare DNS proxy (orange cloud)
+Pure Python backend (FastAPI + uvicorn), vanilla HTML/CSS/JS frontend. No build tools, no frameworks, no dependencies beyond FastAPI.
 
-## Project Structure
-
-- `server/` — Python FastAPI app
-  - `main.py` — WebSocket endpoints, REST API, static file serving
-  - `tmux.py` — tmux subprocess bridge
-  - `config.py` — settings via env vars
-- `web/` — Static frontend (served by FastAPI)
-  - `index.html` — Single page app
-  - `style.css` — Catppuccin themed, mobile-first
-  - `app.js` — WebSocket client, ANSI parser, voice input, pane tree
-- `deploy/` — Infrastructure configs
-  - `nginx.conf` — Scaleway vhost config
-  - `telepatty.service` — systemd unit for local server
-  - `telepatty-tunnel.service` — systemd unit for autossh tunnel
-  - `setup-scaleway.sh` — Initial server setup script
-
-## Development
+## Development Workflow
 
 ```bash
 pip install -e .
 TELEPATTY_TOKEN=test123 uvicorn server.main:app --host 127.0.0.1 --port 7857
-# Open http://127.0.0.1:7857, enter token "test123"
 ```
 
-## Environment Variables
+After changing CSS or JS: bump `?v=N` in `web/index.html` (Cloudflare caches aggressively).
 
-- `TELEPATTY_TOKEN` — Auth token (required)
-- `TELEPATTY_HOST` — Bind address (default: 127.0.0.1)
-- `TELEPATTY_PORT` — Bind port (default: 7857)
-- `TELEPATTY_CAPTURE_INTERVAL` — Terminal poll rate in seconds (default: 0.25)
-- `TELEPATTY_CAPTURE_LINES` — Max captured lines (default: 200)
-- `TELEPATTY_WHISPER_MODEL` — Whisper model size (default: base)
+To restart reliably: `fuser -k 7857/tcp; TELEPATTY_TOKEN=... nohup uvicorn ...`
+
+## Architecture
+
+- `server/main.py` — FastAPI app. TokenAuthMiddleware checks `?token=` on all non-static routes. WebSocket at `/ws/terminal` streams `tmux capture-pane` output at 250ms intervals. REST endpoints for tmux management.
+- `server/tmux.py` — All tmux interaction via `asyncio.create_subprocess_exec` (no shell). Pane data includes `pane_top`/`pane_left` for multi-pane layout positioning.
+- `web/app.js` — IIFE, no modules. ANSI parser maps SGR codes to Catppuccin CSS classes. WebSocket connections auto-reconnect with exponential backoff. History lazy-loads 500 lines per chunk on scroll-up.
+
+## Key Patterns
+
+- **Session order**: `list_sessions()` returns dicts with `idx` (from tmux `$session_id`) for creation-order sorting
+- **Multi-pane layout**: Absolute positioning using `pane_top/left/width/height` as percentages of the total window dimensions
+- **Voice**: Web Speech API primary (client-side, auto-stops on silence), server-side Whisper fallback (loaded in background thread on startup)
+- **Fit-to-client**: Measures monospace character cell size, calculates cols/rows from terminal viewport, subtracts margin (-4 cols, -2 rows), calls `tmux resize-window`
+- **Cache busting**: `?v=N` on CSS/JS hrefs + `Cache-Control: no-cache` header from middleware
 
 ## Deployment
 
-### Systemd services (local machine)
-
-```bash
-sudo cp deploy/telepatty.service /etc/systemd/system/
-sudo cp deploy/telepatty-tunnel.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now telepatty telepatty-tunnel
-```
-
-### Scaleway (already deployed)
-
-- nginx vhost at `/etc/nginx/sites-available/tty.conf`
-- Self-signed origin cert at `/etc/ssl/tty/` (Cloudflare handles public SSL)
-- DNS: tty.paulorosario.com -> Cloudflare proxy -> 212.47.228.17
-
-### Production token
-
-Stored in `deploy/telepatty.service`. To change:
-1. Edit the service file
-2. `sudo systemctl daemon-reload && sudo systemctl restart telepatty`
-3. Clear `tp-token` from localStorage on iPad
-
-## Key Design Decisions
-
-- **No iOS app** — Web-based to avoid $99 Apple Developer fee
-- **Server-side Whisper** — iOS Safari doesn't support Web Speech API; MediaRecorder captures audio, server transcribes
-- **SSH reverse tunnel** — No DDNS needed; workstation initiates outbound connection
-- **Self-signed origin cert** — Cloudflare proxy handles public SSL (Full mode)
-- **Token auth** — Simple shared secret, personal infrastructure
+- Scaleway VPS: nginx at `/etc/nginx/sites-available/tty.conf` (coexists with dxea*.interpt.co)
+- Self-signed origin cert at `/etc/ssl/tty/` (Cloudflare proxy handles public SSL in Full mode)
+- Local systemd: `telepatty.service` (server) + `telepatty-tunnel.service` (autossh)
+- Token stored in systemd unit file environment
