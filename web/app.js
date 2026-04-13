@@ -641,12 +641,18 @@
     async function transcribeAudio(blob) {
         var form = new FormData();
         form.append('audio', blob, 'voice.webm');
+        inputText.placeholder = 'transcribing...';
         try {
             var res = await fetch(apiUrl('/api/transcribe'), { method: 'POST', body: form });
             if (!res.ok) return;
             var data = await res.json();
-            if (data.text) { inputText.value = (inputText.value ? inputText.value + ' ' : '') + data.text; inputText.focus(); }
+            if (data.text) {
+                inputText.value = (inputText.value ? inputText.value + ' ' : '') + data.text;
+                inputText.focus();
+                autoResizeTextarea();
+            }
         } catch (e) { console.error('Transcription error:', e); }
+        finally { inputText.placeholder = 'type or speak...'; }
     }
 
     var micHoldTimer = null, micHeld = false;

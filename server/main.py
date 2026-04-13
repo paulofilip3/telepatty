@@ -234,3 +234,6 @@ async def startup():
         logger.info(f"Found tmux sessions: {', '.join(s['name'] for s in sessions)}")
     else:
         logger.warning("No tmux sessions found")
+    # Pre-load Whisper model in background thread so server starts immediately
+    import threading
+    threading.Thread(target=_get_whisper_model, daemon=True).start()

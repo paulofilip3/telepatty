@@ -17,4 +17,4 @@ CAPTURE_INTERVAL = float(os.environ.get("TELEPATTY_CAPTURE_INTERVAL", "0.25"))
 CAPTURE_LINES = int(os.environ.get("TELEPATTY_CAPTURE_LINES", "200"))
 
 # Whisper model for voice transcription (tiny, base, small, medium, large-v3)
-WHISPER_MODEL = os.environ.get("TELEPATTY_WHISPER_MODEL", "base")
+WHISPER_MODEL = os.environ.get("TELEPATTY_WHISPER_MODEL", "tiny")
