@@ -1,0 +1,21 @@
+# systemd unit for the telepatty local server
+# Install: sudo cp telepatty.service /etc/systemd/system/
+#          sudo systemctl enable --now telepatty
+
+[Unit]
+Description=Telepatty tmux web controller
+After=network.target
+
+[Service]
+Type=simple
+User=paulo
+WorkingDirectory=/home/paulo/OwnCloud/developaulo/personal/work/interpt/tech/devs/telepatty
+Environment=TELEPATTY_TOKEN=CeIu7l71V_vAepiBShgKZv0sJQbWOWPbbzQ3OQKxXS0
+Environment=TELEPATTY_HOST=127.0.0.1
+Environment=TELEPATTY_PORT=7857
+ExecStart=/home/paulo/.pyenv/versions/base/bin/uvicorn server.main:app --host 127.0.0.1 --port 7857
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

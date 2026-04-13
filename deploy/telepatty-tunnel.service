@@ -1,0 +1,23 @@
+# systemd unit for persistent SSH reverse tunnel to Scaleway
+# Install: sudo cp telepatty-tunnel.service /etc/systemd/system/
+#          sudo systemctl enable --now telepatty-tunnel
+
+[Unit]
+Description=Telepatty SSH reverse tunnel to Scaleway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=paulo
+ExecStart=/usr/bin/autossh -M 0 -N \
+    -o "ServerAliveInterval=30" \
+    -o "ServerAliveCountMax=3" \
+    -o "ExitOnForwardFailure=yes" \
+    -R 7857:127.0.0.1:7857 \
+    root@212.47.228.17
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,684 @@
+/* Telepatty — Catppuccin themed tmux remote controller */
+
+@font-face {
+    font-family: 'Symbols Nerd Font Mono';
+    src: url('/static/fonts/SymbolsNerdFontMono-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* === Catppuccin Mocha (dark, default) === */
+:root {
+    --base: #1e1e2e;
+    --mantle: #181825;
+    --crust: #11111b;
+    --text: #cdd6f4;
+    --subtext1: #bac2de;
+    --subtext0: #a6adc8;
+    --overlay2: #9399b2;
+    --overlay1: #7f849c;
+    --overlay0: #6c7086;
+    --surface2: #585b70;
+    --surface1: #45475a;
+    --surface0: #313244;
+    --blue: #89b4fa;
+    --lavender: #b4befe;
+    --sapphire: #74c7ec;
+    --sky: #89dceb;
+    --teal: #94e2d5;
+    --green: #a6e3a1;
+    --yellow: #f9e2af;
+    --peach: #fab387;
+    --maroon: #eba0ac;
+    --red: #f38ba8;
+    --mauve: #cba6f7;
+    --pink: #f5c2e7;
+    --flamingo: #f2cdcd;
+    --rosewater: #f5e0dc;
+    --accent: #cba6f7;
+    --radius: 8px;
+    --radius-sm: 4px;
+    --font: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', ui-monospace, 'Symbols Nerd Font Mono', monospace;
+    --font-size: 13px;
+    --header-h: 48px;
+    --input-h: 52px;
+    --sidebar-w: 280px;
+}
+
+/* === Catppuccin Latte (light) === */
+[data-theme="light"] {
+    --base: #eff1f5;
+    --mantle: #e6e9ef;
+    --crust: #dce0e8;
+    --text: #4c4f69;
+    --subtext1: #5c5f77;
+    --subtext0: #6c6f85;
+    --overlay2: #7c7f93;
+    --overlay1: #8c8fa1;
+    --overlay0: #9ca0b0;
+    --surface2: #acb0be;
+    --surface1: #bcc0cc;
+    --surface0: #ccd0da;
+    --blue: #1e66f5;
+    --lavender: #7287fd;
+    --sapphire: #209fb5;
+    --sky: #04a5e5;
+    --teal: #179299;
+    --green: #40a02b;
+    --yellow: #df8e1d;
+    --peach: #fe640b;
+    --maroon: #e64553;
+    --red: #d20f39;
+    --mauve: #8839ef;
+    --pink: #ea76cb;
+    --flamingo: #dd7878;
+    --rosewater: #dc8a78;
+    --accent: #8839ef;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font);
+    font-size: var(--font-size);
+    background: var(--base);
+    color: var(--text);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hidden { display: none !important; }
+
+/* === Auth screen === */
+.auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+    background: var(--base);
+}
+
+.auth-box {
+    text-align: center;
+    width: 100%;
+    max-width: 320px;
+}
+
+.auth-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+}
+
+.auth-sub {
+    color: var(--overlay1);
+    margin: 4px 0 24px;
+    font-size: 13px;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--surface1);
+    border-radius: var(--radius);
+    background: var(--surface0);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.auth-input:focus {
+    border-color: var(--accent);
+}
+
+.auth-btn {
+    margin-top: 12px;
+    width: 100%;
+}
+
+/* === Buttons === */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s, opacity 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--base);
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-weight: 600;
+}
+
+.btn-primary:active {
+    opacity: 0.8;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--subtext0);
+}
+
+.btn-icon:active {
+    background: var(--surface0);
+}
+
+.btn-sm {
+    width: 28px;
+    height: 28px;
+}
+
+/* === App layout — flexbox column: header then body === */
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: 100dvh;
+}
+
+/* === Header === */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    height: var(--header-h);
+    flex-shrink: 0;
+    background: var(--mantle);
+    border-bottom: 1px solid var(--surface0);
+    z-index: 20;
+}
+
+.header-title {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* === App body — sidebar + terminal side-by-side === */
+.app-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+/* === Sidebar === */
+.sidebar {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    background: var(--mantle);
+    border-right: 1px solid var(--surface0);
+    z-index: 30;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    top: var(--header-h);
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 25;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 12px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--overlay1);
+    flex-shrink: 0;
+}
+
+/* === Tree === */
+.tree {
+    padding: 0 8px 16px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.tree-session {
+    margin-bottom: 8px;
+}
+
+.tree-session-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.tree-session-name:active {
+    background: var(--surface0);
+}
+
+.tree-session-name svg {
+    width: 10px;
+    height: 10px;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.tree-session.collapsed .tree-session-name svg {
+    transform: rotate(-90deg);
+}
+
+.tree-session.collapsed .tree-windows {
+    display: none;
+}
+
+.tree-window {
+    margin-left: 8px;
+    margin-top: 2px;
+}
+
+.tree-window-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--subtext1);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.tree-window-name:active {
+    background: var(--surface0);
+}
+
+.tree-window-name .tree-window-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-window-ctx {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--overlay0);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+    font-size: 14px;
+    font-family: var(--font);
+}
+
+.tree-window-name:hover .tree-window-ctx {
+    opacity: 1;
+}
+
+.tree-window.active > .tree-window-name {
+    color: var(--accent);
+}
+
+.tree-pane {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 24px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--subtext0);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.1s;
+}
+
+.tree-pane:active {
+    background: var(--surface0);
+}
+
+.tree-pane.active {
+    background: var(--surface0);
+    color: var(--accent);
+}
+
+.tree-pane-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--overlay0);
+    flex-shrink: 0;
+}
+
+.tree-pane.active .tree-pane-dot {
+    background: var(--accent);
+}
+
+.tree-pane-cmd {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-pane-context-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--overlay0);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+    font-size: 14px;
+    font-family: var(--font);
+}
+
+.tree-pane:hover .tree-pane-context-btn,
+.tree-pane:active .tree-pane-context-btn {
+    opacity: 1;
+}
+
+/* === Terminal area === */
+.terminal-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.terminal {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px;
+    background: var(--base);
+    font-size: var(--font-size);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.terminal-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--overlay0);
+    font-style: italic;
+}
+
+/* ANSI color classes */
+.ansi-bold { font-weight: 700; }
+.ansi-dim { opacity: 0.6; }
+.ansi-italic { font-style: italic; }
+.ansi-underline { text-decoration: underline; }
+.ansi-strikethrough { text-decoration: line-through; }
+
+.ansi-fg-black   { color: var(--surface1); }
+.ansi-fg-red     { color: var(--red); }
+.ansi-fg-green   { color: var(--green); }
+.ansi-fg-yellow  { color: var(--yellow); }
+.ansi-fg-blue    { color: var(--blue); }
+.ansi-fg-magenta { color: var(--mauve); }
+.ansi-fg-cyan    { color: var(--teal); }
+.ansi-fg-white   { color: var(--text); }
+
+.ansi-fg-bright-black   { color: var(--overlay0); }
+.ansi-fg-bright-red     { color: var(--maroon); }
+.ansi-fg-bright-green   { color: var(--green); }
+.ansi-fg-bright-yellow  { color: var(--yellow); }
+.ansi-fg-bright-blue    { color: var(--sapphire); }
+.ansi-fg-bright-magenta { color: var(--pink); }
+.ansi-fg-bright-cyan    { color: var(--sky); }
+.ansi-fg-bright-white   { color: var(--text); }
+
+.ansi-bg-black   { background: var(--surface0); }
+.ansi-bg-red     { background: var(--red); color: var(--base); }
+.ansi-bg-green   { background: var(--green); color: var(--base); }
+.ansi-bg-yellow  { background: var(--yellow); color: var(--base); }
+.ansi-bg-blue    { background: var(--blue); color: var(--base); }
+.ansi-bg-magenta { background: var(--mauve); color: var(--base); }
+.ansi-bg-cyan    { background: var(--teal); color: var(--base); }
+.ansi-bg-white   { background: var(--text); color: var(--base); }
+
+/* === Input bar === */
+.input-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: var(--mantle);
+    border-top: 1px solid var(--surface0);
+    min-height: var(--input-h);
+    flex-shrink: 0;
+}
+
+.input-text {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--surface1);
+    border-radius: var(--radius);
+    background: var(--surface0);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    min-width: 0;
+    resize: none;
+    max-height: 120px;
+    line-height: 1.4;
+    overflow-y: auto;
+    field-sizing: content;
+}
+
+.input-text:focus {
+    border-color: var(--accent);
+}
+
+.btn-mic {
+    color: var(--subtext0);
+    flex-shrink: 0;
+}
+
+.btn-mic.recording {
+    color: var(--red);
+    animation: pulse 1s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.btn-send {
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+/* === Action sheets (shared for pane and window menus) === */
+.action-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.action-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.action-sheet-body {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    background: var(--mantle);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 8px 0 env(safe-area-inset-bottom, 8px);
+}
+
+.action-sheet-title {
+    padding: 12px 16px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--overlay1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-sheet-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.action-sheet-btn:active {
+    background: var(--surface0);
+}
+
+.action-sheet-danger {
+    color: var(--red);
+}
+
+/* === Multi-pane terminal layout === */
+.terminal-multi {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.terminal-multi .pane-cell {
+    position: absolute;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    font-size: var(--font-size);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border: 1px solid var(--surface0);
+    background: var(--base);
+}
+
+.terminal-multi .pane-cell.pane-focused {
+    border-color: var(--accent);
+}
+
+/* === Scrollbar === */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--surface1);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--surface2);
+}
+
+/* === Safe areas (notch, home indicator) === */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .input-bar {
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    }
+}
+
+/* === Desktop (>=768px): sidebar becomes inline, pushes content === */
+@media (min-width: 768px) {
+    .sidebar {
+        position: static;
+        transform: none;
+        width: 0;
+        min-width: 0;
+        flex-shrink: 0;
+        overflow: hidden;
+        border-right: none;
+        transition: width 0.2s ease, min-width 0.2s ease, border-right-color 0.2s ease;
+    }
+
+    .sidebar.open {
+        width: var(--sidebar-w);
+        min-width: var(--sidebar-w);
+        border-right: 1px solid var(--surface0);
+        overflow-y: auto;
+    }
+
+    /* No overlay needed on desktop */
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
