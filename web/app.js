@@ -257,17 +257,16 @@
         zoomBtn.classList.remove('hidden');
         fitBtn.classList.remove('hidden');
 
-        // If a pane is zoomed, show only the active (zoomed) pane
-        // window_zoomed_flag is set on ALL panes, so we need active+zoomed
+        // If window is zoomed, show only the active pane
+        // window_zoomed_flag is window-level (set on ALL panes), so check active too
+        var isWindowZoomed = panes.length > 0 && panes[0].zoomed;
         var zoomed = null;
-        for (var i = 0; i < panes.length; i++) {
-            if (panes[i].zoomed && panes[i].active) { zoomed = panes[i]; break; }
-        }
-        // If we have a focus target and window is zoomed, prefer that pane
-        if (!zoomed && panes.length > 0 && panes[0].zoomed && focusTarget) {
+        if (isWindowZoomed) {
+            // Find the active pane (the one actually zoomed/visible in tmux)
             for (var i = 0; i < panes.length; i++) {
-                if (panes[i].target === focusTarget) { zoomed = panes[i]; break; }
+                if (panes[i].active) { zoomed = panes[i]; break; }
             }
+            if (!zoomed) zoomed = panes[0]; // fallback
         }
 
         var visiblePanes = zoomed ? [zoomed] : panes;
@@ -663,7 +662,7 @@
         if (!focusedPane) return;
         try {
             await api('POST', '/api/zoom', { target: focusedPane });
-            // Refresh and reconnect
+            // Refresh tree to get updated zoom state
             treeData = await api('GET', '/api/tree');
             renderTree();
             if (activeWindow) {
@@ -671,7 +670,13 @@
                 var sess = findSession(parts[0]);
                 if (sess) {
                     var win = sess.windows.find(function (w) { return w.index === parts[1]; });
-                    if (win) connectToWindow(activeWindow, win.panes, focusedPane);
+                    if (win) {
+                        // Check if window is still zoomed after toggle
+                        var stillZoomed = win.panes.length > 0 && win.panes[0].zoomed;
+                        // Only pass focusTarget when zoomed (to pick the right pane)
+                        // When unzooming, pass null so all panes are shown
+                        connectToWindow(activeWindow, win.panes, stillZoomed ? focusedPane : null);
+                    }
                 }
             }
         } catch (e) { /* ignore */ }
