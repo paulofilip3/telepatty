@@ -151,6 +151,13 @@ async def api_resize(target: str = Query(), width: int = Query(), height: int = 
     return {"ok": True}
 
 
+@app.get("/api/history")
+async def api_history(target: str = Query(), start: int = Query(), end: int = Query()):
+    """Get a range of pane scrollback history (start/end are negative line offsets)."""
+    content = await tmux.capture_pane_range(target, start, end)
+    return {"content": content}
+
+
 # --- Voice transcription ---
 
 _whisper_model = None

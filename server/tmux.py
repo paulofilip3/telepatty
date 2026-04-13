@@ -125,6 +125,17 @@ async def capture_pane(target: str, lines: int = 200) -> str:
     return out
 
 
+async def capture_pane_range(target: str, start: int, end: int) -> str:
+    """Capture a range of pane history. start/end are negative line offsets."""
+    out, rc = await _run([
+        "tmux", "capture-pane", "-t", target, "-p", "-e",
+        "-S", str(start), "-E", str(end),
+    ])
+    if rc != 0:
+        return ""
+    return out
+
+
 async def send_keys(target: str, keys: str, literal: bool = True) -> bool:
     """Send keystrokes to a tmux pane."""
     cmd = ["tmux", "send-keys", "-t", target]

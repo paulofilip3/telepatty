@@ -11,6 +11,8 @@
     var treeData = [];
     var collapsedSessions = {}; // session name -> true if collapsed
     var autoScroll = true;
+    var historyState = {};       // target -> { offset, loading, exhausted }
+    var HISTORY_CHUNK = 500;     // lines to fetch per scroll-up
     var isListening = false;
     var speechRecognition = null;
 
@@ -234,6 +236,7 @@
             try { if (wsConnections[i].ws) wsConnections[i].ws.close(); } catch (e) {}
         }
         wsConnections = [];
+        historyState = {};
     }
 
     // --- Connect to a window (show all panes or zoomed pane) ---
@@ -305,6 +308,7 @@
                     };
                 })(p.target));
 
+                attachHistoryScroll(cell, p.target);
                 openPaneWs(p.target, cell);
             }
         }
@@ -448,7 +452,78 @@
 
     terminalEl.addEventListener('scroll', function () {
         autoScroll = terminalEl.scrollHeight - terminalEl.scrollTop - terminalEl.clientHeight < 30;
+        // Lazy load history when scrolled to top
+        if (terminalEl.scrollTop < 50 && focusedPane) {
+            loadHistory(focusedPane, terminalEl);
+        }
     });
+
+    // Also handle scroll on individual pane cells in multi-pane view
+    function attachHistoryScroll(el, target) {
+        el.addEventListener('scroll', function () {
+            if (el.scrollTop < 50) loadHistory(target, el);
+        });
+    }
+
+    async function loadHistory(target, el) {
+        if (!historyState[target]) {
+            historyState[target] = { offset: 200, loading: false, exhausted: false };
+        }
+        var hs = historyState[target];
+        if (hs.loading || hs.exhausted) return;
+        hs.loading = true;
+
+        var newEnd = -(hs.offset + 1);
+        var newStart = -(hs.offset + HISTORY_CHUNK);
+
+        try {
+            var data = await api('GET', '/api/history', {
+                target: target, start: newStart, end: newEnd
+            });
+            var content = data.content;
+            if (!content || !content.trim()) {
+                hs.exhausted = true;
+                hs.loading = false;
+                return;
+            }
+
+            // Parse and prepend
+            var prevScrollHeight = el.scrollHeight;
+            var lines = content.split('\n');
+            var frag = document.createDocumentFragment();
+            for (var li = 0; li < lines.length; li++) {
+                var lineEl = document.createElement('div');
+                lineEl.style.minHeight = '1.4em';
+                var spans = parseAnsi(lines[li]);
+                for (var si = 0; si < spans.length; si++) {
+                    var sp = spans[si];
+                    if (!sp.text) continue;
+                    var cls = sp.classes.slice();
+                    if (sp.fg) cls.push(sp.fg);
+                    if (sp.bg) cls.push(sp.bg);
+                    var sty = (sp.fgS ? sp.fgS + ';' : '') + (sp.bgS ? sp.bgS + ';' : '');
+                    if (cls.length || sty) {
+                        var el2 = document.createElement('span');
+                        if (cls.length) el2.className = cls.join(' ');
+                        if (sty) el2.style.cssText = sty;
+                        el2.textContent = sp.text;
+                        lineEl.appendChild(el2);
+                    } else {
+                        lineEl.appendChild(document.createTextNode(sp.text));
+                    }
+                }
+                frag.appendChild(lineEl);
+            }
+            el.insertBefore(frag, el.firstChild);
+
+            // Preserve scroll position
+            el.scrollTop = el.scrollHeight - prevScrollHeight + el.scrollTop;
+            hs.offset += HISTORY_CHUNK;
+        } catch (e) {
+            console.error('Failed to load history:', e);
+        }
+        hs.loading = false;
+    }
 
     // --- Input ---
     // Enter: send text + Enter key to tmux. Shift+Enter / Alt+Enter: newline in textarea.
