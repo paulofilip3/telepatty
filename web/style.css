@@ -560,6 +560,75 @@ html, body {
     color: var(--green);
 }
 
+/* === Terminal keyboard toolbar === */
+.term-keys {
+    flex-shrink: 0;
+    background: var(--mantle);
+    border-top: 1px solid var(--surface0);
+    overflow: hidden;
+}
+
+.term-keys-row {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.term-keys-row::-webkit-scrollbar {
+    display: none;
+}
+
+.tk {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--surface1);
+    border-radius: var(--radius-sm);
+    background: var(--surface0);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.tk:active {
+    background: var(--surface1);
+}
+
+.tk-mod {
+    color: var(--subtext0);
+}
+
+.tk-mod.active {
+    background: var(--accent);
+    color: var(--base);
+    border-color: var(--accent);
+}
+
+.tk-shortcut {
+    color: var(--peach);
+    border-color: var(--surface2);
+}
+
+.tk-sep {
+    flex-shrink: 0;
+    width: 1px;
+    height: 24px;
+    margin: 4px 2px;
+    background: var(--surface1);
+}
+
 /* === Action sheets (shared for pane and window menus) === */
 .action-sheet {
     position: fixed;

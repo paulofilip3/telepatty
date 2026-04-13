@@ -16,7 +16,7 @@
                 t === 'light' ? '#eff1f5' : '#1e1e2e';
         })();
     </script>
-    <link rel="stylesheet" href="/static/style.css?v=13">
+    <link rel="stylesheet" href="/static/style.css?v=14">
 </head>
 <body>
     <!-- Auth screen -->
@@ -68,6 +68,44 @@
                         <p>select a pane from the sidebar</p>
                     </div>
                 </div>
+                <!-- Terminal keyboard toolbar -->
+                <div id="term-keys" class="term-keys">
+                    <div class="term-keys-row">
+                        <button class="tk" data-special="Escape">Esc</button>
+                        <button class="tk" data-special="Tab">Tab</button>
+                        <button class="tk tk-mod" id="tk-ctrl">Ctrl</button>
+                        <button class="tk tk-mod" id="tk-alt">Alt</button>
+                        <span class="tk-sep"></span>
+                        <button class="tk" data-special="Up">&#9650;</button>
+                        <button class="tk" data-special="Down">&#9660;</button>
+                        <button class="tk" data-special="Left">&#9664;</button>
+                        <button class="tk" data-special="Right">&#9654;</button>
+                        <span class="tk-sep"></span>
+                        <button class="tk" data-literal="|">|</button>
+                        <button class="tk" data-literal="~">~</button>
+                        <button class="tk" data-literal="\">\</button>
+                        <button class="tk" data-literal="/">/</button>
+                        <button class="tk" data-literal="-">-</button>
+                        <button class="tk" data-literal="_">_</button>
+                        <button class="tk" data-literal="*">*</button>
+                        <button class="tk" data-literal="$">$</button>
+                        <button class="tk" data-literal="{">{</button>
+                        <button class="tk" data-literal="}">}</button>
+                        <button class="tk" data-literal="[">[</button>
+                        <button class="tk" data-literal="]">]</button>
+                        <button class="tk" data-literal="`">`</button>
+                        <button class="tk" data-literal="'">'</button>
+                        <span class="tk-sep"></span>
+                        <button class="tk tk-shortcut" data-special="C-c">^C</button>
+                        <button class="tk tk-shortcut" data-special="C-d">^D</button>
+                        <button class="tk tk-shortcut" data-special="C-z">^Z</button>
+                        <button class="tk tk-shortcut" data-special="C-l">^L</button>
+                        <button class="tk tk-shortcut" data-special="C-a">^A</button>
+                        <button class="tk tk-shortcut" data-special="C-e">^E</button>
+                        <button class="tk tk-shortcut" data-special="C-r">^R</button>
+                        <button class="tk tk-shortcut" data-special="C-w">^W</button>
+                    </div>
+                </div>
                 <div class="input-bar">
                     <button id="mic-btn" class="btn btn-icon btn-mic" aria-label="Voice input" title="Hold to speak">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 9a6 6 0 0012 0M10 17v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -106,6 +144,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=13"></script>
+    <script src="/static/app.js?v=14"></script>
 </body>
 </html>

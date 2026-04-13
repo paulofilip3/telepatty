@@ -184,7 +184,7 @@
 
                     var cmd = document.createElement('span');
                     cmd.className = 'tree-pane-cmd';
-                    cmd.textContent = pane.pane_index + ': ' + pane.current_command + (pane.zoomed ? ' [Z]' : '');
+                    cmd.textContent = pane.pane_index + ': ' + pane.current_command + (pane.zoomed && pane.active ? ' [Z]' : '');
                     paneDiv.appendChild(cmd);
 
                     var ctxBtn = document.createElement('button');
@@ -247,10 +247,17 @@
         zoomBtn.classList.remove('hidden');
         fitBtn.classList.remove('hidden');
 
-        // If a pane is zoomed, show only that pane
+        // If a pane is zoomed, show only the active (zoomed) pane
+        // window_zoomed_flag is set on ALL panes, so we need active+zoomed
         var zoomed = null;
         for (var i = 0; i < panes.length; i++) {
-            if (panes[i].zoomed) { zoomed = panes[i]; break; }
+            if (panes[i].zoomed && panes[i].active) { zoomed = panes[i]; break; }
+        }
+        // If we have a focus target and window is zoomed, prefer that pane
+        if (!zoomed && panes.length > 0 && panes[0].zoomed && focusTarget) {
+            for (var i = 0; i < panes.length; i++) {
+                if (panes[i].target === focusTarget) { zoomed = panes[i]; break; }
+            }
         }
 
         var visiblePanes = zoomed ? [zoomed] : panes;
@@ -559,6 +566,85 @@
         if (e.key === 'Escape') {
             paneActions.classList.add('hidden');
             windowActions.classList.add('hidden');
+        }
+    });
+
+    // --- Terminal keyboard toolbar ---
+    var ctrlActive = false;
+    var altActive = false;
+    var tkCtrl = document.getElementById('tk-ctrl');
+    var tkAlt = document.getElementById('tk-alt');
+
+    function sendSpecialToPane(key) {
+        if (!focusedPane) return;
+        var conn = wsConnections.find(function (c) { return c.target === focusedPane; });
+        if (!conn || !conn.ws || conn.ws.readyState !== WebSocket.OPEN) return;
+        conn.ws.send(JSON.stringify({ type: 'special', data: key }));
+    }
+
+    function sendLiteralToPane(text) {
+        if (!focusedPane) return;
+        var conn = wsConnections.find(function (c) { return c.target === focusedPane; });
+        if (!conn || !conn.ws || conn.ws.readyState !== WebSocket.OPEN) return;
+        conn.ws.send(JSON.stringify({ type: 'keys', data: text }));
+    }
+
+    function clearModifiers() {
+        ctrlActive = false;
+        altActive = false;
+        tkCtrl.classList.remove('active');
+        tkAlt.classList.remove('active');
+    }
+
+    // Ctrl/Alt toggle
+    tkCtrl.addEventListener('click', function (e) {
+        e.preventDefault();
+        ctrlActive = !ctrlActive;
+        tkCtrl.classList.toggle('active', ctrlActive);
+    });
+    tkAlt.addEventListener('click', function (e) {
+        e.preventDefault();
+        altActive = !altActive;
+        tkAlt.classList.toggle('active', altActive);
+    });
+
+    // All toolbar keys
+    document.querySelectorAll('.tk:not(.tk-mod)').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var special = btn.dataset.special;
+            var literal = btn.dataset.literal;
+
+            if (special) {
+                // If Ctrl is active and it's a letter-like special key, prepend C-
+                if (ctrlActive && !special.startsWith('C-')) {
+                    sendSpecialToPane('C-' + special);
+                } else if (altActive && !special.startsWith('M-')) {
+                    sendSpecialToPane('M-' + special);
+                } else {
+                    sendSpecialToPane(special);
+                }
+            } else if (literal) {
+                if (ctrlActive) {
+                    // Ctrl + literal char → send as C-<char>
+                    sendSpecialToPane('C-' + literal);
+                } else if (altActive) {
+                    sendSpecialToPane('M-' + literal);
+                } else {
+                    sendLiteralToPane(literal);
+                }
+            }
+            clearModifiers();
+        });
+    });
+
+    // Also apply Ctrl/Alt to keystrokes typed in the textarea
+    inputText.addEventListener('keydown', function (e) {
+        if ((ctrlActive || altActive) && e.key.length === 1) {
+            e.preventDefault();
+            var prefix = ctrlActive ? 'C-' : 'M-';
+            sendSpecialToPane(prefix + e.key);
+            clearModifiers();
         }
     });
 
