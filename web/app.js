@@ -11,9 +11,8 @@
     var treeData = [];
     var collapsedSessions = {}; // session name -> true if collapsed
     var autoScroll = true;
-    var mediaRecorder = null;
-    var audioChunks = [];
-    var isRecording = false;
+    var isListening = false;
+    var speechRecognition = null;
 
     // --- DOM refs ---
     var $ = function (s) { return document.querySelector(s); };
@@ -609,66 +608,148 @@
         } catch (e) { console.error('Failed to create session:', e); }
     });
 
-    // --- Voice input ---
-    async function startRecording() {
-        try {
-            var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // --- Voice input (Web Speech API, client-side) ---
+    // Tap mic → start listening → auto-stops on silence → text appears in textarea.
+    // Tap mic again to start a new recognition session.
+    // Falls back to server-side Whisper if Web Speech API unavailable.
+
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var hasSpeechAPI = !!SpeechRecognition;
+
+    function startListening() {
+        if (isListening) return;
+
+        if (hasSpeechAPI) {
+            startWebSpeech();
+        } else {
+            startServerVoice();
+        }
+    }
+
+    function stopListening() {
+        if (!isListening) return;
+        if (speechRecognition) {
+            speechRecognition.abort();
+            speechRecognition = null;
+        }
+        isListening = false;
+        micBtn.classList.remove('recording');
+        inputText.placeholder = 'type or speak...';
+    }
+
+    // --- Web Speech API (primary — runs on device) ---
+    function startWebSpeech() {
+        var rec = new SpeechRecognition();
+        rec.continuous = false;      // stop after pause in speech
+        rec.interimResults = true;   // show text as user speaks
+        rec.maxAlternatives = 1;
+
+        var finalText = inputText.value;
+        var prefix = finalText ? finalText + ' ' : '';
+
+        rec.onstart = function () {
+            isListening = true;
+            micBtn.classList.add('recording');
+            inputText.placeholder = 'listening...';
+        };
+
+        rec.onresult = function (e) {
+            var interim = '';
+            var final = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                var transcript = e.results[i][0].transcript;
+                if (e.results[i].isFinal) {
+                    final += transcript;
+                } else {
+                    interim += transcript;
+                }
+            }
+            if (final) {
+                prefix = prefix + final + ' ';
+                inputText.value = prefix;
+            } else {
+                inputText.value = prefix + interim;
+            }
+            autoResizeTextarea();
+        };
+
+        rec.onerror = function (e) {
+            if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                console.error('Speech recognition error:', e.error);
+            }
+        };
+
+        rec.onend = function () {
+            // Auto-stopped (silence detected or done)
+            isListening = false;
+            speechRecognition = null;
+            micBtn.classList.remove('recording');
+            inputText.placeholder = 'type or speak...';
+            // Trim trailing space
+            inputText.value = inputText.value.trimEnd();
+            autoResizeTextarea();
+            inputText.focus();
+        };
+
+        speechRecognition = rec;
+        rec.start();
+    }
+
+    // --- Server-side Whisper fallback ---
+    var mediaRecorder = null;
+    var audioChunks = [];
+
+    function startServerVoice() {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
             audioChunks = [];
-            mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
+            var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+            var mimeType = '';
+            for (var i = 0; i < types.length; i++) {
+                if (MediaRecorder.isTypeSupported(types[i])) { mimeType = types[i]; break; }
+            }
+            mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {});
             mediaRecorder.ondataavailable = function (e) { if (e.data.size > 0) audioChunks.push(e.data); };
             mediaRecorder.onstop = async function () {
                 stream.getTracks().forEach(function (t) { t.stop(); });
-                await transcribeAudio(new Blob(audioChunks, { type: mediaRecorder.mimeType }));
+                var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                inputText.placeholder = 'transcribing...';
+                try {
+                    var form = new FormData();
+                    form.append('audio', blob, 'voice.webm');
+                    var res = await fetch(apiUrl('/api/transcribe'), { method: 'POST', body: form });
+                    if (res.ok) {
+                        var data = await res.json();
+                        if (data.text) {
+                            inputText.value = (inputText.value ? inputText.value + ' ' : '') + data.text;
+                            autoResizeTextarea();
+                            inputText.focus();
+                        }
+                    }
+                } catch (e) { console.error('Transcription error:', e); }
+                finally {
+                    isListening = false;
+                    micBtn.classList.remove('recording');
+                    inputText.placeholder = 'type or speak...';
+                }
             };
             mediaRecorder.start();
-            isRecording = true;
+            isListening = true;
             micBtn.classList.add('recording');
-        } catch (e) { console.error('Mic access denied:', e); }
+            inputText.placeholder = 'recording... tap mic to stop';
+        }).catch(function (e) { console.error('Mic access denied:', e); });
     }
 
-    function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-        isRecording = false;
-        micBtn.classList.remove('recording');
-    }
-
-    function getSupportedMimeType() {
-        var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
-        for (var i = 0; i < types.length; i++) { if (MediaRecorder.isTypeSupported(types[i])) return types[i]; }
-        return '';
-    }
-
-    async function transcribeAudio(blob) {
-        var form = new FormData();
-        form.append('audio', blob, 'voice.webm');
-        inputText.placeholder = 'transcribing...';
-        try {
-            var res = await fetch(apiUrl('/api/transcribe'), { method: 'POST', body: form });
-            if (!res.ok) return;
-            var data = await res.json();
-            if (data.text) {
-                inputText.value = (inputText.value ? inputText.value + ' ' : '') + data.text;
-                inputText.focus();
-                autoResizeTextarea();
-            }
-        } catch (e) { console.error('Transcription error:', e); }
-        finally { inputText.placeholder = 'type or speak...'; }
-    }
-
-    var micHoldTimer = null, micHeld = false;
-    micBtn.addEventListener('pointerdown', function (e) {
+    // Mic button: tap to toggle
+    micBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        if (isRecording) { stopRecording(); return; }
-        micHeld = false;
-        micHoldTimer = setTimeout(function () { micHeld = true; startRecording(); }, 200);
-    });
-    micBtn.addEventListener('pointerup', function (e) {
-        e.preventDefault(); clearTimeout(micHoldTimer);
-        if (micHeld && isRecording) stopRecording();
-        else if (!micHeld && !isRecording) startRecording();
-    });
-    micBtn.addEventListener('pointerleave', function () {
-        clearTimeout(micHoldTimer);
-        if (micHeld && isRecording) stopRecording();
+        if (isListening) {
+            if (hasSpeechAPI) {
+                stopListening();
+            } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();  // triggers onstop → transcribe
+            }
+        } else {
+            startListening();
+        }
     });
 })();
