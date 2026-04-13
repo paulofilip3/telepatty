@@ -662,7 +662,9 @@
         if (!focusedPane) return;
         try {
             await api('POST', '/api/zoom', { target: focusedPane });
-            // Refresh tree to get updated zoom state
+            // Wait for tmux to settle after zoom toggle
+            await new Promise(function (r) { setTimeout(r, 300); });
+            // Refresh and reconnect to the window (not a specific pane)
             treeData = await api('GET', '/api/tree');
             renderTree();
             if (activeWindow) {
@@ -670,16 +672,10 @@
                 var sess = findSession(parts[0]);
                 if (sess) {
                     var win = sess.windows.find(function (w) { return w.index === parts[1]; });
-                    if (win) {
-                        // Check if window is still zoomed after toggle
-                        var stillZoomed = win.panes.length > 0 && win.panes[0].zoomed;
-                        // Only pass focusTarget when zoomed (to pick the right pane)
-                        // When unzooming, pass null so all panes are shown
-                        connectToWindow(activeWindow, win.panes, stillZoomed ? focusedPane : null);
-                    }
+                    if (win) connectToWindow(activeWindow, win.panes);
                 }
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) { console.error('Zoom failed:', e); }
     });
 
     function findSession(name) {
@@ -748,7 +744,10 @@
             try {
                 if (action === 'split-v') await api('POST', '/api/split', { target: target, horizontal: 'false' });
                 else if (action === 'split-h') await api('POST', '/api/split', { target: target, horizontal: 'true' });
-                else if (action === 'zoom') await api('POST', '/api/zoom', { target: target });
+                else if (action === 'zoom') {
+                    await api('POST', '/api/zoom', { target: target });
+                    await new Promise(function (r) { setTimeout(r, 300); });
+                }
                 else if (action === 'kill-pane') {
                     await api('DELETE', '/api/pane', { target: target });
                     if (focusedPane === target) disconnectAll();
