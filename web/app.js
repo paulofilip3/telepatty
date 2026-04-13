@@ -192,11 +192,21 @@
                     ctxBtn.textContent = '\u00B7\u00B7\u00B7';
                     paneDiv.appendChild(ctxBtn);
 
-                    // Click pane -> focus it (and connect to its window)
+                    // Click pane -> if already on this window, just change focus; otherwise connect
                     paneDiv.addEventListener('click', (function (target, wk, panes) {
                         return function (e) {
                             if (e.target.closest('.tree-pane-context-btn')) return;
-                            connectToWindow(wk, panes, target);
+                            if (activeWindow === wk) {
+                                // Already viewing this window — just switch focus
+                                focusedPane = target;
+                                var cells = terminalEl.querySelectorAll('.pane-cell');
+                                for (var j = 0; j < cells.length; j++) {
+                                    cells[j].classList.toggle('pane-focused', cells[j].dataset.target === target);
+                                }
+                                renderTree();
+                            } else {
+                                connectToWindow(wk, panes, target);
+                            }
                             if (window.innerWidth < 768) closeSidebar();
                         };
                     })(pane.target, winKey, win.panes));
