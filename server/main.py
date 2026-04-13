@@ -142,6 +142,15 @@ async def api_send_special(target: str = Query(), key: str = Query()):
     return {"ok": True}
 
 
+@app.post("/api/resize")
+async def api_resize(target: str = Query(), width: int = Query(), height: int = Query()):
+    """Resize a tmux window to match client viewport (cols x rows)."""
+    ok = await tmux.resize_window(target, width, height)
+    if not ok:
+        raise HTTPException(400, "Failed to resize")
+    return {"ok": True}
+
+
 # --- Voice transcription ---
 
 _whisper_model = None

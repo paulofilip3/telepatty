@@ -556,6 +556,10 @@ html, body {
     flex-shrink: 0;
 }
 
+.btn-fit-active {
+    color: var(--green);
+}
+
 /* === Action sheets (shared for pane and window menus) === */
 .action-sheet {
     position: fixed;

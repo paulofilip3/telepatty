@@ -27,6 +27,7 @@
     var terminalEl = $('#terminal');
     var headerTitle = $('#header-title');
     var zoomBtn = $('#zoom-btn');
+    var fitBtn = $('#fit-btn');
     var themeBtn = $('#theme-btn');
     var inputText = $('#input-text');
     var sendBtn = $('#send-btn');
@@ -241,6 +242,7 @@
         activeWindow = winKey;
         headerTitle.textContent = winKey;
         zoomBtn.classList.remove('hidden');
+        fitBtn.classList.remove('hidden');
 
         // If a pane is zoomed, show only that pane
         var zoomed = null;
@@ -306,6 +308,9 @@
                 openPaneWs(p.target, cell);
             }
         }
+
+        // Apply client sizing if enabled
+        if (fitToClient) setTimeout(doFitResize, 100);
     }
 
     // --- Open a WebSocket for a single pane with auto-reconnect ---
@@ -508,6 +513,45 @@
         return null;
     }
 
+    // --- Fit to client (resize tmux to match browser viewport) ---
+    var fitToClient = false;
+    var fitResizeTimer = null;
+
+    fitBtn.addEventListener('click', function () {
+        fitToClient = !fitToClient;
+        fitBtn.classList.toggle('btn-fit-active', fitToClient);
+        if (fitToClient) doFitResize();
+    });
+
+    function getTerminalCellSize() {
+        // Measure a single character cell in the terminal
+        var measure = document.createElement('span');
+        measure.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:' +
+            getComputedStyle(terminalEl).font;
+        measure.textContent = 'X';
+        document.body.appendChild(measure);
+        var w = measure.offsetWidth;
+        var h = measure.offsetHeight;
+        document.body.removeChild(measure);
+        return { w: w || 8, h: h || 16 };
+    }
+
+    function doFitResize() {
+        if (!fitToClient || !activeWindow) return;
+        var cell = getTerminalCellSize();
+        var cols = Math.floor(terminalEl.clientWidth / cell.w);
+        var rows = Math.floor(terminalEl.clientHeight / cell.h);
+        if (cols < 10 || rows < 5) return;
+        api('POST', '/api/resize', { target: activeWindow, width: cols, height: rows }).catch(function () {});
+    }
+
+    // Re-fit on browser resize
+    window.addEventListener('resize', function () {
+        if (!fitToClient) return;
+        clearTimeout(fitResizeTimer);
+        fitResizeTimer = setTimeout(doFitResize, 300);
+    });
+
     // --- Pane action sheet ---
     function showPaneActions(target) {
         contextTarget = target;
@@ -587,6 +631,9 @@
         focusedPane = null;
         headerTitle.textContent = 'telepatty';
         zoomBtn.classList.add('hidden');
+        fitBtn.classList.add('hidden');
+        fitToClient = false;
+        fitBtn.classList.remove('btn-fit-active');
         while (terminalEl.firstChild) terminalEl.removeChild(terminalEl.firstChild);
         terminalEl.className = 'terminal';
         var ph = document.createElement('div');

@@ -189,6 +189,16 @@ async def kill_session(name: str) -> bool:
     return rc == 0
 
 
+async def resize_window(target: str, width: int, height: int) -> bool:
+    """Resize a tmux window (affects all panes in it) using aggressive-resize."""
+    # Force the client size by resizing the window via a helper session
+    # The cleanest way: set window size directly
+    _, rc = await _run([
+        "tmux", "resize-window", "-t", target, "-x", str(width), "-y", str(height),
+    ])
+    return rc == 0
+
+
 async def get_tree() -> list[dict]:
     """Get full tmux tree: sessions -> windows -> panes, ordered by index."""
     sessions = await list_sessions()
