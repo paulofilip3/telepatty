@@ -539,8 +539,8 @@
     function doFitResize() {
         if (!fitToClient || !activeWindow) return;
         var cell = getTerminalCellSize();
-        var cols = Math.floor(terminalEl.clientWidth / cell.w);
-        var rows = Math.floor(terminalEl.clientHeight / cell.h);
+        var cols = Math.floor(terminalEl.clientWidth / cell.w) - 2;
+        var rows = Math.floor(terminalEl.clientHeight / cell.h) - 1;
         if (cols < 10 || rows < 5) return;
         api('POST', '/api/resize', { target: activeWindow, width: cols, height: rows }).catch(function () {});
     }
