@@ -258,18 +258,17 @@
         fitBtn.classList.remove('hidden');
 
         // If window is zoomed, show only the active pane
-        // window_zoomed_flag is window-level (set on ALL panes), so check active too
         var isWindowZoomed = panes.length > 0 && panes[0].zoomed;
         var zoomed = null;
         if (isWindowZoomed) {
-            // Find the active pane (the one actually zoomed/visible in tmux)
             for (var i = 0; i < panes.length; i++) {
                 if (panes[i].active) { zoomed = panes[i]; break; }
             }
-            if (!zoomed) zoomed = panes[0]; // fallback
+            if (!zoomed) zoomed = panes[0];
         }
 
         var visiblePanes = zoomed ? [zoomed] : panes;
+        console.log('[telepatty] connectToWindow', winKey, 'zoomed:', isWindowZoomed, 'visible:', visiblePanes.length, 'panes:', panes.map(function(p) { return p.target + '(z=' + p.zoomed + ',a=' + p.active + ')'; }));
 
         // Set focus to requested pane, or active pane, or first pane
         if (focusTarget) {
@@ -344,13 +343,15 @@
         wsConnections.push(conn);
 
         function connect() {
-            if (conn.closed) return;
+            if (conn.closed) { console.log('[telepatty] WS connect aborted (closed)', target); return; }
+            console.log('[telepatty] WS connecting', target);
             var ws = new WebSocket(url);
             conn.ws = ws;
 
             ws.onopen = function () {
+                console.log('[telepatty] WS open', target);
                 autoScroll = true;
-                retryDelay = 1000; // reset on successful connect
+                retryDelay = 1000;
             };
             ws.onmessage = function (e) {
                 var msg = JSON.parse(e.data);
@@ -359,6 +360,7 @@
                 }
             };
             ws.onclose = function () {
+                console.log('[telepatty] WS close', target, 'intentional:', conn.closed);
                 if (conn.closed) return;
                 // Auto-reconnect with exponential backoff
                 setTimeout(connect, retryDelay);
