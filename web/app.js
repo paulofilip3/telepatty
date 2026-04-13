@@ -807,10 +807,11 @@
             speechRecognition = null;
             micBtn.classList.remove('recording');
             inputText.placeholder = 'type or speak...';
-            // Trim trailing space
+            // Auto-submit the transcribed text and clear
             inputText.value = inputText.value.trimEnd();
-            autoResizeTextarea();
-            inputText.focus();
+            if (inputText.value) {
+                sendInput();
+            }
         };
 
         speechRecognition = rec;
