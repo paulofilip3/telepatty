@@ -227,10 +227,11 @@
         }, 3000);
     }
 
-    // --- Close all WebSocket connections ---
+    // --- Close all WebSocket connections (stops auto-reconnect) ---
     function closeAllWs() {
         for (var i = 0; i < wsConnections.length; i++) {
-            try { wsConnections[i].ws.close(); } catch (e) {}
+            wsConnections[i].closed = true;
+            try { if (wsConnections[i].ws) wsConnections[i].ws.close(); } catch (e) {}
         }
         wsConnections = [];
     }
@@ -308,31 +309,40 @@
         }
     }
 
-    // --- Open a WebSocket for a single pane, render into el ---
+    // --- Open a WebSocket for a single pane with auto-reconnect ---
     function openPaneWs(target, el) {
         var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         var url = proto + '//' + location.host + '/ws/terminal?target=' +
             encodeURIComponent(target) + '&token=' + encodeURIComponent(token);
-        var ws = new WebSocket(url);
-        var conn = { ws: ws, target: target, el: el };
+        var retryDelay = 1000;
+        var maxRetry = 30000;
+        var conn = { ws: null, target: target, el: el, closed: false };
         wsConnections.push(conn);
 
-        ws.onopen = function () { autoScroll = true; };
-        ws.onmessage = function (e) {
-            var msg = JSON.parse(e.data);
-            if (msg.type === 'content') {
-                renderTerminalContent(el, msg.data);
-            }
-        };
-        ws.onclose = function () {
-            if (activeWindow && conn.el.parentNode) {
-                var disc = document.createElement('div');
-                disc.style.cssText = 'color:var(--overlay0);padding:8px;';
-                disc.textContent = '-- disconnected --';
-                conn.el.appendChild(disc);
-            }
-        };
-        ws.onerror = function () { ws.close(); };
+        function connect() {
+            if (conn.closed) return;
+            var ws = new WebSocket(url);
+            conn.ws = ws;
+
+            ws.onopen = function () {
+                autoScroll = true;
+                retryDelay = 1000; // reset on successful connect
+            };
+            ws.onmessage = function (e) {
+                var msg = JSON.parse(e.data);
+                if (msg.type === 'content') {
+                    renderTerminalContent(el, msg.data);
+                }
+            };
+            ws.onclose = function () {
+                if (conn.closed) return;
+                // Auto-reconnect with exponential backoff
+                setTimeout(connect, retryDelay);
+                retryDelay = Math.min(retryDelay * 1.5, maxRetry);
+            };
+            ws.onerror = function () { ws.close(); };
+        }
+        connect();
     }
 
     // --- ANSI parser ---
@@ -446,6 +456,7 @@
         if (text) conn.ws.send(JSON.stringify({ type: 'keys', data: text }));
         conn.ws.send(JSON.stringify({ type: 'special', data: 'Enter' }));
         inputText.value = '';
+        inputText.style.height = 'auto';
     }
 
     sendBtn.addEventListener('click', sendInput);
@@ -456,6 +467,13 @@
         }
         // Shift+Enter and Alt+Enter insert newline naturally (default textarea behavior)
     });
+
+    // Auto-resize textarea (fallback for iOS which doesn't support field-sizing: content)
+    function autoResizeTextarea() {
+        inputText.style.height = 'auto';
+        inputText.style.height = Math.min(inputText.scrollHeight, 120) + 'px';
+    }
+    inputText.addEventListener('input', autoResizeTextarea);
 
     // --- Esc closes action sheets ---
     document.addEventListener('keydown', function (e) {
