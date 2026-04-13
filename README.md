@@ -52,7 +52,7 @@ No ports opened on your home network. Your workstation initiates the outbound SS
 ### Install and run locally
 
 ```bash
-git clone https://github.com/interpt/telepatty.git
+git clone https://github.com/paulofilip3/telepatty.git
 cd telepatty
 pip install -e .
 
